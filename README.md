@@ -1,6 +1,5 @@
 # channelcrawlerWS
 
 # TODO 
-## use iframe to embed youtube video from dump.json 
-## add buttons to cycle through the videos
-## add remove and accept buttons
+## reject shifts all elements down in data and datamap
+## package as exe and do full testing
