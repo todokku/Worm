@@ -4,7 +4,9 @@ const {
 } = require('googleapis');
 const SCOPES = ['https://www.googleapis.com/auth/spreadsheets'];
 const TOKEN_PATH = 'token.json';
-
+//get column offset from 0
+let re = /(..)(\d+)(.+)/;
+let colOffset;
 module.exports.tokenAuth = (client, token) => {
     client.setCredentials(token);
 }
@@ -71,6 +73,7 @@ module.exports.deleteRow = (row_index, auth, spreadsheetId, sheetId) => {
         }, (err, response) => {
             if (err) console.error(err);
             console.log("Updated rows");
+            console.log(response);
         });
 
     });
@@ -80,11 +83,12 @@ module.exports.getChannels = async (subsheet, auth, spreadsheetId, range) => {
         version: 'v4',
         auth
     });
+    var search = re.exec(range);
+    colOffset = parseInt(search[2]);
     let res = await sheets.spreadsheets.values.get({
         spreadsheetId: spreadsheetId,
         range: `'${subsheet}'${range}`,
     });
-
     let data = getDataMap(res);
     return data;
 }
@@ -94,7 +98,7 @@ const getDataMap = (res) => {
     for (var i = 0; i < rows.length; i++) {
         if (rows[i].length > 0) {
             let map = {};
-            map['position'] = i + 2;
+            map['position'] = i + colOffset;
             map['channel'] = rows[i];
             arr.push(map);
         }

@@ -15,6 +15,7 @@ let client;
 let data;
 let dataMap;
 let config;
+let code;
 // spreadsheet info, subsheet id, range of the channel ids
 let spreadsheetId;
 let spreadsheetName;
@@ -35,7 +36,7 @@ function openUrl() {
 }
 
 //load crawled data and position
-function loadConfig() {
+function loadConfig(loadData, createClientWindow) {
     fs.readFile('dump.json', (err, channels) => {
         data = JSON.parse(channels);
         console.log("Loaded data");
@@ -48,27 +49,19 @@ function loadConfig() {
         rangeInput = config['range'];
         console.log("Loaded position");
         console.log('current index ' + currentIndex);
+        loadData(createClientWindow);
     });
 }
 
-//create the main application window
-function createClientWindow() {
-    clientwin = new BrowserWindow({
-        width: 800,
-        height: 600,
-        webPreferences: {
-            nodeIntegration: true
-        }
-    });
-    clientwin.loadFile('index.html');
+function loadData(createClientWindow) {
     auth.getSheetId(client, spreadsheetId, spreadsheetName).then((res) => {
         sheetId = res;
         console.log('Loaded sheet id');
-    }).catch(() => console.log('Sheet id err'));
+    }).catch((err) => console.log(err));
     auth.getChannels(spreadsheetName, client, spreadsheetId, rangeInput).then((res) => {
         dataMap = res;
         console.log(dataMap);
-        var code = `var ipcRenderer = require('electron').ipcRenderer;
+        code = `var ipcRenderer = require('electron').ipcRenderer;
                 var iframe = document.getElementById('video');
                 ipcRenderer.on('loadVideo', (event, args)=>{
                     console.log(args);
@@ -86,11 +79,22 @@ function createClientWindow() {
                 backButton.addEventListener('click', () => {
                     ipcRenderer.send('backClick');
                 });`
-
-        clientwin.webContents.executeJavaScript(code).then(() => {
-            clientwin.webContents.send('loadVideo', data[dataMap[currentIndex].channel]);
-        }).catch(() => console.log('Load video err'));
-    }).catch(() => console.log('Load channels err'));
+        createClientWindow();
+    }).catch((err) => console.log(err));
+}
+//create the main application window
+function createClientWindow() {
+    clientwin = new BrowserWindow({
+        width: 800,
+        height: 600,
+        webPreferences: {
+            nodeIntegration: true
+        }
+    });
+    clientwin.loadFile('index.html');
+    clientwin.webContents.executeJavaScript(code).then(() => {
+        clientwin.webContents.send('loadVideo', data[dataMap[currentIndex].channel]);
+    }).catch((err) => console.log(err));
     client.on('close', () => {
         client = null;
     });
@@ -128,8 +132,7 @@ function createAuthWindow() {
 //authorize the user
 ipcMain.on('authSubmit', (event, args) => {
     console.log(args);
-    auth.getToken(client, args, createClientWindow);
-
+    auth.getToken(client, args, loadConfig(loadData, createClientWindow));
 });
 
 //fires when the reject button is clicked on index.html
@@ -169,7 +172,6 @@ ipcMain.on('forwardClick', (event, args) => {
 });
 app.on('ready', () => {
     fs.readFile(TOKEN_PATH, (err, token) => {
-        loadConfig();
         //open auth window if client has not been verified
         if (err) {
             console.log("Token err");
@@ -181,7 +183,7 @@ app.on('ready', () => {
                 // Authorize a client with credentials, then call the Google Sheets API.
                 client = auth.getClient(JSON.parse(content));
                 client.setCredentials(JSON.parse(token));
-                createClientWindow();
+                loadConfig(loadData, createClientWindow);
             });
         }
     });
