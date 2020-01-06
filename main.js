@@ -15,7 +15,7 @@ let client;
 let data;
 let dataMap;
 let config;
-let code;
+let clientCode;
 // spreadsheet info, subsheet id, range of the channel ids
 let spreadsheetId;
 let spreadsheetName;
@@ -61,7 +61,7 @@ function loadData(createClientWindow) {
     auth.getChannels(spreadsheetName, client, spreadsheetId, rangeInput).then((res) => {
         dataMap = res;
         console.log(dataMap);
-        code = `var ipcRenderer = require('electron').ipcRenderer;
+        clientCode = `var ipcRenderer = require('electron').ipcRenderer;
                 var iframe = document.getElementById('video');
                 ipcRenderer.on('loadVideo', (event, args)=>{
                     console.log(args);
@@ -92,7 +92,7 @@ function createClientWindow() {
         }
     });
     clientwin.loadFile('index.html');
-    clientwin.webContents.executeJavaScript(code).then(() => {
+    clientwin.webContents.executeJavaScript(clientCode).then(() => {
         clientwin.webContents.send('loadVideo', data[dataMap[currentIndex].channel]);
     }).catch((err) => console.log(err));
     client.on('close', () => {
